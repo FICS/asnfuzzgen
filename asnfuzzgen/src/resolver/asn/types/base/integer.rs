@@ -26,35 +26,31 @@ impl Asn1ResolvedInteger {
 
         // Get the Values that are expected
         let value_set = ty.get_integer_valueset_from_constraint(resolver)?;
-        if let Some(x) = value_set.root_values.min() {
-            base.signed = x < 0;
-        }
 
-        let bit_width = if base.signed {
-            let min = value_set.root_values.min().unwrap();
-            let max = value_set.root_values.max().unwrap();
-            let bits_needed_max = 128 - max.abs().leading_zeros();
-            let bits_needed_min = 128 - min.abs().leading_zeros();
-            // TODO: temporary fix for buggy code. May still be buggy.
-            std::cmp::max(bits_needed_min, bits_needed_max) + if min < 0 && max > 0 { 1 } else { 0 }
-        } else if value_set.root_values.min().is_none() {
-            8_u32
-        } else {
-            let max = value_set.root_values.max().unwrap();
-            128 - max.leading_zeros()
-        };
-
-        base.bits = if bit_width <= 8 {
-            8
-        } else if bit_width <= 16 {
-            16
-        } else if bit_width <= 32 {
-            32
-        } else if bit_width <= 64 {
-            64
-        } else {
-            128
-        };
+        let min = value_set.root_values.min().unwrap();
+        let max = value_set.root_values.max().unwrap();
+        (base.bits, base.signed) =
+            if i8::MIN as i128 <= min && max <= i8::MAX as i128 {
+                (8, true)
+            } else if 0 <= min && max <= u8::MAX as i128 {
+                (8, false)
+            } else if i16::MIN as i128 <= min && max <= i16::MAX as i128 {
+                (16, true)
+            } else if 0 <= min && max <= u16::MAX as i128 {
+                (16, false)
+            } else if i32::MIN as i128 <= min && max <= i32::MAX as i128 {
+                (32, true)
+            } else if 0 <= min && max <= u32::MAX as i128 {
+                (32, false)
+            } else if i64::MIN as i128 <= min && max <= i64::MAX as i128 {
+                (64, true)
+            } else if 0 <= min && max <= u64::MAX as i128 {
+                (64, false)
+            } else if min < 0 {
+                (128, true)
+            } else {
+                (128, false)
+            };
 
         // TODO: If we have named values, They should be added to Global list of resolved definitions.
 
